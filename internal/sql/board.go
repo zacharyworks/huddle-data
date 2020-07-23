@@ -3,44 +3,70 @@ package sql
 import (
 	// SQL driver
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/zacbriggssagecom/huddle/server/sharedinternal/data"
-	"github.com/zacbriggssagecom/huddle/server/sharedinternal/db"
+	"github.com/zacharyworks/huddle-shared/data"
+	"github.com/zacharyworks/huddle-shared/db"
 )
 
+func SelectUsersBoards(id string) (boards []types.Board, err error) {
+	var (
+		boardFK int
+		userFK string
+		)
+	rows, err := db.DbCon.Query(
+	`SELECT * FROM board 
+			INNER JOIN boardMember ON board.boardID = boardMember.boardFK
+			WHERE boardMember.userFK = ?`, id)
+
+	defer rows.Close()
+	for rows.Next() {
+		var newBoard types.Board
+		err := rows.Scan(&newBoard.BoardID, &newBoard.Name, &newBoard.BoardType, &boardFK, &userFK)
+		if err != nil {
+			return boards, err
+		}
+		boards = append(boards, newBoard)
+	}
+
+	return boards, err
+}
+
 // SelectBoardByID selects a board by its id
-func SelectBoardByID(id string) (board *types.Board, err error) {
-	rows, err := db.DbCon.Query("SELECT * FROM session WHERE sessionID = ?", id)
+func SelectBoardByID(id int) (*types.Board, error) {
+	rows, err := db.DbCon.Query("SELECT * FROM board WHERE boardID = ?", id)
+	var board types.Board
 	if err != nil {
-		return board, err
+		return &board, err
 	}
 
 	defer rows.Close()
 	for rows.Next() {
 		err := rows.Scan(
 			&board.BoardID,
-			&board.Name)
+			&board.Name,
+			&board.BoardType)
 		if err != nil {
-			return board, err
+			return &board, err
 		}
 	}
-	return board, err
+	return &board, err
 }
 
 // InsertBoard inserts a board of ID and Name
-func InsertBoard(board types.Board) error {
-	stmt, err := db.DbCon.Prepare("INSERT board SET boardID = ?, name = ?")
+func InsertBoard(board types.Board) (*types.Board, error) {
+	stmt, err := db.DbCon.Prepare("INSERT board SET name = ?, boardType = ?")
 	if err != nil {
-		return err
+		return &types.Board{}, err
 	}
 	defer stmt.Close()
 
-	_, err = stmt.Exec(board.BoardID, board.Name)
+	result, err := stmt.Exec(board.Name, board.BoardType)
 
 	if err != nil {
-		return err
+		return &types.Board{}, err
 	}
 
-	return nil
+	id, err := result.LastInsertId()
+	return SelectBoardByID(int(id))
 }
 
 // UpdateBoard updates a session with new data
@@ -48,11 +74,13 @@ func UpdateBoard(board types.Board) error {
 	_, err := db.DbCon.Query(`
 		UPDATE board SET
 		boardID = ?,
-		name = ?
+		name = ?,
+	 	boardType = ?
 		WHERE boardID = ?`,
 		board.BoardID,
 		board.Name,
-		board.BoardID)
+		board.BoardID,
+		board.BoardType)
 
 	return err
 }

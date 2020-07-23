@@ -3,8 +3,8 @@ package rest
 import (
 	"encoding/json"
 	"github.com/gorilla/mux"
-	"github.com/zacbriggssagecom/huddle/server/data/internal/sql"
-	"github.com/zacbriggssagecom/huddle/server/sharedinternal/data"
+	"../sql"
+	"github.com/zacharyworks/huddle-shared/data"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -16,7 +16,7 @@ func AddUserHandlers(router *mux.Router) {
 	router.HandleFunc("/user", PostUser).Methods("POST")
 }
 
-// GetUser get single todo
+// GetUser get single to-do
 func GetUser(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	// Get todo ID from url vars
@@ -46,16 +46,10 @@ func PostUser(w http.ResponseWriter, r *http.Request) {
 	json.Unmarshal([]byte(body), &user)
 
 	// Attempt to create todo
-	id, err := sql.InsertUser(user)
+	newUser, err := sql.InsertUser(user)
 	if err != nil {
 		log.Fatal(err)
 		return
-	}
-
-	// From the returned ID, send back the new todo in JSON
-	newUser, err := sql.SelectUserByID(id)
-	if err != nil {
-		log.Fatal(err)
 	}
 
 	// Convert to JSON

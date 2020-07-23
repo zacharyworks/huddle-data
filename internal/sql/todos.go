@@ -3,8 +3,8 @@ package sql
 import (
 	// SQL driver
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/zacbriggssagecom/huddle/server/sharedinternal/data"
-	"github.com/zacbriggssagecom/huddle/server/sharedinternal/db"
+	"github.com/zacharyworks/huddle-shared/data"
+	"github.com/zacharyworks/huddle-shared/db"
 	"log"
 )
 
@@ -38,6 +38,25 @@ func GetAllTodo() (*[]types.Todo, error) {
 		})
 	}
 	return &allTodo, err
+}
+
+// GetTodosForBoard gets todos for a specific board
+func GetTodosForBoard(id int) (todos []types.Todo, err error) {
+	println("Hey there!")
+	rows, err := db.DbCon.Query(`SELECT * FROM todo WHERE boardFK = ?`, id)
+	if err != nil {
+		return
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var todo types.Todo
+		err = rows.Scan(&todo.TodoID, &todo.Status, &todo.Value, &todo.ParentFK, &todo.BoardFK)
+		if err != nil {
+			return
+		}
+		todos = append(todos, todo)
+	}
+	return
 }
 
 // SelectTodo selects a todo based off its ID

@@ -1,10 +1,10 @@
 package rest
 
 import (
+	"../sql"
 	"encoding/json"
 	"github.com/gorilla/mux"
-	"github.com/zacbriggssagecom/huddle/server/data/internal/sql"
-	"github.com/zacbriggssagecom/huddle/server/sharedinternal/data"
+	"github.com/zacharyworks/huddle-shared/data"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -90,7 +90,7 @@ func PostSession(w http.ResponseWriter, r *http.Request) {
 	w.Write(sessionJSON)
 }
 
-// PutSession puts a todo
+// PutSession puts a to-do
 func PutSession(w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(r.Body)
 	// not using vars because they would expose session ID in URL

@@ -3,9 +3,8 @@ package sql
 import (
 	// SQL driver
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/zacbriggssagecom/huddle/server/sharedinternal/data"
-	"github.com/zacbriggssagecom/huddle/server/sharedinternal/db"
-	"log"
+	"github.com/zacharyworks/huddle-shared/data"
+	"github.com/zacharyworks/huddle-shared/db"
 )
 
 // SelectUser selects a user by their authID
@@ -17,7 +16,7 @@ func SelectUser(oauthID string) (*types.User, error) {
 	}
 	defer rows.Close()
 	for rows.Next() {
-		err := rows.Scan(&user.UserID, &user.OauthID, &user.Email, &user.Picture)
+		err := rows.Scan(&user.OauthID, &user.Email, &user.Picture, &user.Name, &user.GivenName, &user.FamilyName)
 		if err != nil {
 			return &user, err
 		}
@@ -25,37 +24,32 @@ func SelectUser(oauthID string) (*types.User, error) {
 	return &user, err
 }
 
-// SelectUserByID selects a user by their sql ID
-func SelectUserByID(id int) (*types.User, error) {
-	var user types.User
-	rows, err := db.DbCon.Query("SELECT * FROM user WHERE userID = ?", id)
-	if err != nil {
-		return &user, err
-	}
-	defer rows.Close()
-	for rows.Next() {
-		err := rows.Scan(&user.UserID, &user.OauthID, &user.Email, &user.Picture)
-		if err != nil {
-			return &user, err
-		}
-	}
-	return &user, err
-}
 
 //InsertUser creates a new user
-func InsertUser(user types.User) (int, error) {
-	stmt, err := db.DbCon.Prepare("INSERT user SET oauthID = ?, email = ?, picture = ?")
+func InsertUser(user types.User) (*types.User, error) {
+	stmt, err := db.DbCon.Prepare(`INSERT user SET oauthID = ?, 
+                email = ?, 
+                picture = ?, 
+                name = ?, 
+                givenName = ?, 
+                familyName = ?`)
 	if err != nil {
-		log.Fatal(err)
+		return &types.User{}, err
 	}
 	defer stmt.Close()
 
-	result, err := stmt.Exec(user.OauthID, user.Email, user.Picture)
+	// Create user
+	_, err = stmt.Exec(user.OauthID, user.Email, user.Picture, user.Name, user.GivenName, user.FamilyName)
 
+	// Create the users personal board
+	userBoard, err := InsertBoard(types.Board{Name: user.Name, BoardType: 0})
 	if err != nil {
-		return 0, err
+		return &types.User{}, err
+	}
+	err = InsertBoardMember(types.BoardMember{UserFK: user.OauthID, BoardFK: userBoard.BoardID})
+	if err != nil {
+		return &types.User{}, err
 	}
 
-	id, err := result.LastInsertId()
-	return int(id), err
+	return SelectUser(user.OauthID)
 }

@@ -3,8 +3,8 @@ package sql
 import (
 	// SQL driver
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/zacbriggssagecom/huddle/server/sharedinternal/data"
-	"github.com/zacbriggssagecom/huddle/server/sharedinternal/db"
+	"github.com/zacharyworks/huddle-shared/data"
+	"github.com/zacharyworks/huddle-shared/db"
 )
 
 // SelectSessionByID selects a session by its id
