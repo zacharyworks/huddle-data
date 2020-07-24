@@ -1,150 +1,126 @@
 package rest
 
 import (
+	"../shared"
+	"../sql"
 	"encoding/json"
 	"github.com/gorilla/mux"
-	"../sql"
 	"github.com/zacharyworks/huddle-shared/data"
 	"io/ioutil"
-	"log"
 	"net/http"
-	"strconv"
 )
 
-// AddTodoHandlers adds handlers for to-do functions
+// AddTodoHandlers adds handlers for to-do functions to a provided router
 func AddTodoHandlers(router *mux.Router) {
-	router.HandleFunc("/todos", GetTodos).Methods("GET")
-	router.HandleFunc("/board/{id}/todos", GetBoardTodo).Methods("GET")
-	router.HandleFunc("/todos", PostTodo).Methods("POST")
-	router.HandleFunc("/todos/{id}", GetTodo).Methods("GET")
-	router.HandleFunc("/todos/{id}", PutTodo).Methods("PUT")
-	router.HandleFunc("/todos/{id}", DeleteTodo).Methods("DELETE")
+	router.Handle("/board/{id}/todos", Handler(GetBoardTodo)).Methods("GET")
+	router.Handle("/todos", Handler(PostTodo)).Methods("POST")
+	router.Handle("/todos/{id}", Handler(GetTodo)).Methods("GET")
+	router.Handle("/todos/{id}", Handler(PutTodo)).Methods("PUT")
+	router.Handle("/todos/{id}", Handler(DeleteTodo)).Methods("DELETE")
 }
 
-// GetTodos get to-dos
-func GetTodos(w http.ResponseWriter, r *http.Request) {
-	// Get todos
-	todos, err := sql.GetAllTodo()
-	if err != nil {
-		log.Fatal(err)
+
+func GetBoardTodo(w http.ResponseWriter, r *http.Request) *shared.AppError  {
+	boardID, e := getVarAsInt(r, "id")
+	if e != nil {
+		return e
 	}
-	// Convert to JSON
-	todosJSON, err := json.Marshal(*todos)
-	if err != nil {
-		log.Fatal(err)
+
+	todos, e := sql.GetTodosForBoard(boardID)
+	if e != nil {
+		return e
 	}
-	w.Write(todosJSON)
+
+	if e = respond(w, todos); e != nil {
+		return e
+	}
+
+	return nil
 }
 
-// GetTodos get to-dos
-func GetBoardTodo(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	// Get to-do ID from url vars
-	boardID, err := strconv.Atoi(vars["id"])
-	// Get todos
-	todos, err := sql.GetTodosForBoard(boardID)
-	if err != nil {
-		log.Fatal(err)
-	}
-	// Convert to JSON
-	todosJSON, err := json.Marshal(todos)
-	if err != nil {
-		log.Fatal(err)
-	}
-	w.Write(todosJSON)
-}
 
 // GetTodo get single to-do
-func GetTodo(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	// Get to-do ID from url vars
-	todoID, err := strconv.Atoi(vars["id"])
-	if err != nil {
-		log.Fatal(err)
+func GetTodo(w http.ResponseWriter, r *http.Request) *shared.AppError {
+	todoID, e := getVarAsInt(r, "id")
+	if e != nil {
+		return e
 	}
 
 	// Attempt to select to-do from database
-	todo, err := sql.SelectTodo(todoID)
-	if err != nil {
-		log.Fatal(err)
+	todo, e := sql.SelectTodo(todoID)
+	if e != nil {
+		return e
 	}
 
-	// Convert to JSON
-	todoJSON, err := json.Marshal(*todo)
-	if err != nil {
-		log.Fatal(err)
+	if e = respond(w, todo); e != nil {
+		return e
 	}
-
-	w.Write(todoJSON)
+	return nil
 }
 
 // PutTodo puts a to-do
-func PutTodo(w http.ResponseWriter, r *http.Request) {
-	body, err := ioutil.ReadAll(r.Body)
-	vars := mux.Vars(r)
-
-	// Get to-do ID from url vars
-	todoID, err := strconv.Atoi(vars["id"])
-	if err != nil {
-		log.Fatal(err)
+func PutTodo(w http.ResponseWriter, r *http.Request) *shared.AppError {
+	todoID, e := getVarAsInt(r, "id")
+	if e != nil {
+		return e
 	}
 
 	// Get map of to-do values from body from their keys
 	var todo types.Todo
+	body, err := ioutil.ReadAll(r.Body)
 	json.Unmarshal([]byte(body), &todo)
 
 	todo.TodoID = todoID
 
 	// Attempt update
-	err = sql.UpdateTodo(todo)
-	if err != nil {
-		log.Fatal(err)
+	if e = sql.UpdateTodo(todo); err != nil {
+		return e
 	}
+	return nil
 }
 
 // PostTodo posts a to-do
-func PostTodo(w http.ResponseWriter, r *http.Request) {
+func PostTodo(w http.ResponseWriter, r *http.Request) *shared.AppError {
 	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		shared.ErrorProcessingBody(err)
+	}
 
 	// Get map of to-do values from body from their keys
 	var todo types.Todo
-	json.Unmarshal([]byte(body), &todo)
+	if err := json.Unmarshal([]byte(body), &todo); err != nil {
+		return shared.ErrorProcessingJSON(err)
+	}
 
 	// Attempt to create to-do
-	id, err := sql.InsertTodo(todo)
-	if err != nil {
-		log.Fatal(err)
-		return
+	id, e := sql.InsertTodo(todo)
+	if e != nil {
+		return e
 	}
 
 	// From the returned ID, send back the new to-do in JSON
-	newTodo, err := sql.SelectTodo(id)
-	if err != nil {
-		log.Fatal(err)
+	newTodo, e := sql.SelectTodo(id)
+	if e != nil {
+		return e
 	}
 
-	// Convert to JSON
-	todoJSON, err := json.Marshal(*newTodo)
-	if err != nil {
-		log.Fatal(err)
+	// Form response
+	if e = respond(w, newTodo); e != nil {
+		return e
 	}
-
-	w.Write(todoJSON)
+	return nil
 }
 
 // DeleteTodo deletes a to-do
-func DeleteTodo(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-
-	// Get todo ID from url vars
-	todoID, err := strconv.Atoi(vars["id"])
-	if err != nil {
-		log.Fatal(err)
+func DeleteTodo(w http.ResponseWriter, r *http.Request) *shared.AppError {
+	todoID, e := getVarAsInt(r, "id")
+	if e != nil {
+		return e
 	}
 
 	// Attempt delete
-	err = sql.RemoveTodo(types.Todo{TodoID: todoID})
-	if err != nil {
-		log.Fatal(err)
+	if e = sql.RemoveTodo(types.Todo{TodoID: todoID}); e != nil {
+		return e
 	}
+	return nil
 }

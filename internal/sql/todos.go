@@ -1,116 +1,83 @@
 package sql
 
-import (
+import
+(
+	"../shared"
 	// SQL driver
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/zacharyworks/huddle-shared/data"
 	"github.com/zacharyworks/huddle-shared/db"
-	"log"
 )
 
-// GetAllTodo selects ALL todos from the database
-func GetAllTodo() (*[]types.Todo, error) {
-	var (
-		todoID   int
-		status   int
-		parentFK int
-		boardFK  int
-		value    string
-		allTodo  []types.Todo
-	)
-	rows, err := db.DbCon.Query("SELECT * FROM todo")
-	if err != nil {
-		return &allTodo, err
-	}
-	defer rows.Close()
-	for rows.Next() {
-		err := rows.Scan(&todoID, &status, &value, &parentFK, &boardFK)
-		if err != nil {
-			return &allTodo, err
-		}
-
-		allTodo = append(allTodo, types.Todo{
-			TodoID:   todoID,
-			Status:   status,
-			Value:    value,
-			ParentFK: parentFK,
-			BoardFK:  boardFK,
-		})
-	}
-	return &allTodo, err
-}
-
-// GetTodosForBoard gets todos for a specific board
-func GetTodosForBoard(id int) (todos []types.Todo, err error) {
-	println("Hey there!")
+// GetTodosForBoard gets to-dos for a specific board
+func GetTodosForBoard(id int) (todos []types.Todo, e *shared.AppError) {
 	rows, err := db.DbCon.Query(`SELECT * FROM todo WHERE boardFK = ?`, id)
 	if err != nil {
-		return
+		return nil, shared.ErrorRetrievingRecord(err)
 	}
 	defer rows.Close()
+
 	for rows.Next() {
 		var todo types.Todo
-		err = rows.Scan(&todo.TodoID, &todo.Status, &todo.Value, &todo.ParentFK, &todo.BoardFK)
-		if err != nil {
-			return
+		if err = rows.Scan(&todo.TodoID, &todo.Status, &todo.Value, &todo.ParentFK, &todo.BoardFK); err != nil {
+			return nil, shared.ErrorParsingRecord(err)
 		}
 		todos = append(todos, todo)
 	}
-	return
+	return todos, nil
 }
 
-// SelectTodo selects a todo based off its ID
-func SelectTodo(id int) (*types.Todo, error) {
+// SelectTodo selects a to-do based off its ID
+func SelectTodo(id int) (*types.Todo, *shared.AppError) {
 	var todo types.Todo
 
-	rows, err := db.DbCon.Query("SELECT * FROM todo WHERE todoID = ?", id)
-	if err != nil {
-		return &todo, err
+	if err := db.DbCon.QueryRow("SELECT * FROM todo WHERE todoID = ?", id).Scan(
+		&todo.TodoID,
+		&todo.Status,
+		&todo.Value,
+		&todo.ParentFK,
+		&todo.BoardFK); err != nil {
+		return &todo, shared.ErrorRetrievingRecord(err)
 	}
-	defer rows.Close()
-	for rows.Next() {
-		err := rows.Scan(&todo.TodoID, &todo.Status, &todo.Value, &todo.ParentFK, &todo.BoardFK)
-		if err != nil {
-			return &todo, err
-		}
 
-	}
-	return &todo, err
+	return &todo, nil
 }
 
-// InsertTodo inserts a new todo
-func InsertTodo(todo types.Todo) (int, error) {
+// InsertTodo inserts a new to-do
+func InsertTodo(todo types.Todo) (int, *shared.AppError) {
 	stmt, err := db.DbCon.Prepare("INSERT todo SET status = ?, value = ?, parentFK = ?, boardFK = ?")
-	if err != nil {
-		log.Fatal(err)
-	}
 	defer stmt.Close()
 
-	result, err := stmt.Exec(todo.Status, todo.Value, todo.ParentFK, todo.BoardFK)
-
 	if err != nil {
-		return 0, err
+		return 0, shared.ErrorInsertingRecord(err)
+	}
+
+	result, err := stmt.Exec(todo.Status, todo.Value, todo.ParentFK, todo.BoardFK)
+	if err != nil {
+		return 0, shared.ErrorParsingRecord(err)
 	}
 
 	id, err := result.LastInsertId()
-	return int(id), err
+	return int(id), shared.ErrorRetrievingRecord(err)
 }
 
-// UpdateTodo updates a todo
-func UpdateTodo(todo types.Todo) error {
-	_, err := db.DbCon.Query("UPDATE todo SET status = ?, value = ?, parentFK = ? WHERE todoID = ?",
+// UpdateTodo updates a to-do
+func UpdateTodo(todo types.Todo) *shared.AppError {
+	if _, err := db.DbCon.Query("UPDATE todo SET status = ?, value = ?, parentFK = ? WHERE todoID = ?",
 		todo.Status,
 		todo.Value,
 		todo.ParentFK,
-		todo.TodoID)
+		todo.TodoID); err != nil {
+		return shared.ErrorUpdatingRecord(err)
+	}
 
-	return err
+	return nil
 }
 
-// RemoveTodo removes a todo from the database
-func RemoveTodo(todo types.Todo) error {
-
-	_, err := db.DbCon.Query("DELETE FROM todo WHERE todoID = ?", todo.TodoID)
-
-	return err
+// RemoveTodo removes a to-do from the database
+func RemoveTodo(todo types.Todo) *shared.AppError {
+	if _, err := db.DbCon.Query("DELETE FROM todo WHERE todoID = ?", todo.TodoID); err != nil {
+		shared.ErrorDeletingRecord(err)
+	}
+	return nil
 }

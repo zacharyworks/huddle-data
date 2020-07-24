@@ -1,6 +1,7 @@
 package rest
 
 import (
+	"../shared"
 	"../sql"
 	"encoding/json"
 	"github.com/gorilla/mux"
@@ -12,94 +13,88 @@ import (
 
 // AddUserHandlers adds the handlers for user functions
 func AddSessionHandlers(router *mux.Router) {
-	router.HandleFunc("/session/state/{id}", GetSessionByState).Methods("GET")
-	router.HandleFunc("/session/id/{id}", GetSessionByID).Methods("GET")
-	router.HandleFunc("/session/adduser", PutSession).Methods("PUT")
-	router.HandleFunc("/session", PostSession).Methods("POST")
+	router.Handle("/session/state/{id}", Handler(GetSessionByState)).Methods("GET")
+	router.Handle("/session/id/{id}", Handler(GetSessionByID)).Methods("GET")
+	router.Handle("/session/adduser", Handler(PutSession)).Methods("PUT")
+	router.Handle("/session", Handler(PostSession)).Methods("POST")
 }
 
 // GetSession fetches a session
-func GetSessionByID(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	// Get todo ID from url vars
-	sessionID := vars["id"]
+func GetSessionByID(w http.ResponseWriter, r *http.Request) *shared.AppError {
+	sessionID := mux.Vars(r)["id"]
 
-	// Attempt to select todo from database
-	session, err := sql.SelectSessionByID(sessionID)
-	if err != nil {
-		log.Fatal(err)
+	// Attempt to select to-do from database
+	session, e := sql.SelectSessionByID(sessionID)
+	if e != nil {
+		return e
 	}
 
 	// Convert to JSON
-	sessionJSON, err := json.Marshal(*session)
-	if err != nil {
-		log.Fatal(err)
+	if e = respond(w, *session); e != nil {
+		return e
 	}
-
-	w.Write(sessionJSON)
+	return nil
 }
 
 // GetSession fetches a session
-func GetSessionByState(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	// Get todo ID from url vars
-	sessionID := vars["id"]
+func GetSessionByState(w http.ResponseWriter, r *http.Request) *shared.AppError {
+	sessionID := mux.Vars(r)["id"]
 
-	// Attempt to select todo from database
-	session, err := sql.SelectSessionByState(sessionID)
-	if err != nil {
-		log.Fatal(err)
+	// Attempt to select to-do from database
+	session, e := sql.SelectSessionByState(sessionID)
+	if e != nil {
+		log.Fatal(e)
 	}
 
 	// Convert to JSON
-	sessionJSON, err := json.Marshal(*session)
-	if err != nil {
-		log.Fatal(err)
+	if e = respond(w, *session); e != nil {
+		return e
 	}
 
-	w.Write(sessionJSON)
+	return nil
 }
 
 // PostSession creates a new session
-func PostSession(w http.ResponseWriter, r *http.Request) {
+func PostSession(w http.ResponseWriter, r *http.Request) *shared.AppError {
 	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		shared.ErrorProcessingBody(err)
+	}
 
-	// Get map of todo values from body from their keys
 	var session types.Session
 	json.Unmarshal([]byte(body), &session)
 
-	// Attempt to create todo
-	err = sql.InsertSession(session)
-	if err != nil {
-		println(err.Error)
-		w.WriteHeader(http.StatusBadRequest)
+	// Attempt to create session
+	if e := sql.InsertSession(session); e != nil {
+		return e
 	}
 
-	// From the returned ID, send back the new todo in JSON
-	newSession, err := sql.SelectSessionByID(session.SessionID)
-	if err != nil {
-		log.Fatal(err)
+	// From the returned ID, send back the new session
+	newSession, e := sql.SelectSessionByID(session.SessionID)
+	if e != nil {
+		return e
 	}
 
 	// Convert to JSON
-	sessionJSON, err := json.Marshal(*newSession)
-	if err != nil {
-		log.Fatal(err)
+	if e = respond(w, *newSession); e != nil {
+		return e
 	}
-
-	w.Write(sessionJSON)
+	return nil
 }
 
 // PutSession puts a to-do
-func PutSession(w http.ResponseWriter, r *http.Request) {
+func PutSession(w http.ResponseWriter, r *http.Request) *shared.AppError {
 	body, err := ioutil.ReadAll(r.Body)
-	// not using vars because they would expose session ID in URL
+	if err != nil {
+		shared.ErrorProcessingBody(err)
+	}
+
 	var session types.Session
 	json.Unmarshal([]byte(body), &session)
 
 	// Attempt update
-	err = sql.UpdateSession(session)
-	if err != nil {
-		log.Fatal(err)
+	if e := sql.UpdateSession(session); err != nil {
+		return e
 	}
+	return nil
 }

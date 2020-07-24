@@ -1,62 +1,59 @@
 package rest
 
 import (
+	"../shared"
+	"../sql"
 	"encoding/json"
 	"github.com/gorilla/mux"
-	"../sql"
 	"github.com/zacharyworks/huddle-shared/data"
 	"io/ioutil"
-	"log"
 	"net/http"
 )
 
 // AddUserHandlers adds the handlers for user functions
 func AddUserHandlers(router *mux.Router) {
-	router.HandleFunc("/user/{id}", GetUser).Methods("GET")
-	router.HandleFunc("/user", PostUser).Methods("POST")
+	router.Handle("/user/{id}", Handler(GetUser)).Methods("GET")
+	router.Handle("/user", Handler(PostUser)).Methods("POST")
 }
 
 // GetUser get single to-do
-func GetUser(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	// Get todo ID from url vars
-	oauthID := vars["id"]
+func GetUser(w http.ResponseWriter, r *http.Request) *shared.AppError {
+	oauthID := mux.Vars(r)["id"]
 
 	// Attempt to select todo from database
-	user, err := sql.SelectUser(oauthID)
-	if err != nil {
-		log.Fatal(err)
+	user, e := sql.SelectUser(oauthID)
+	if e != nil {
+		return e
 	}
 
-	// Convert to JSON
-	userJSON, err := json.Marshal(*user)
-	if err != nil {
-		log.Fatal(err)
+	if e = respond(w, user); e != nil {
+		return e
 	}
 
-	w.Write(userJSON)
+	return nil
 }
 
 // PostUser creates a new user
-func PostUser(w http.ResponseWriter, r *http.Request) {
+func PostUser(w http.ResponseWriter, r *http.Request) *shared.AppError {
 	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return shared.ErrorProcessingBody(err)
+	}
 
-	// Get map of todo values from body from their keys
+	// Get map of user values from body from their keys
 	var user types.User
-	json.Unmarshal([]byte(body), &user)
+	if err = json.Unmarshal([]byte(body), &user); err != nil {
+		return shared.ErrorProcessingJSON(err)
+	}
 
 	// Attempt to create todo
-	newUser, err := sql.InsertUser(user)
-	if err != nil {
-		log.Fatal(err)
-		return
+	newUser, e := sql.InsertUser(user)
+	if e != nil {
+		return e
 	}
 
-	// Convert to JSON
-	userJSON, err := json.Marshal(*newUser)
-	if err != nil {
-		log.Fatal(err)
+	if e = respond(w, newUser); e != nil {
+		return e
 	}
-
-	w.Write(userJSON)
+	return nil
 }

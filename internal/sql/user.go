@@ -1,6 +1,7 @@
 package sql
 
 import (
+	"../shared"
 	// SQL driver
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/zacharyworks/huddle-shared/data"
@@ -8,47 +9,55 @@ import (
 )
 
 // SelectUser selects a user by their authID
-func SelectUser(oauthID string) (*types.User, error) {
+func SelectUser(oauthID string) (*types.User, *shared.AppError) {
 	var user types.User
-	rows, err := db.DbCon.Query("SELECT * FROM user WHERE oauthID = ?", oauthID)
-	if err != nil {
-		return &user, err
+	if err := db.DbCon.QueryRow("SELECT * FROM user WHERE oauthID = ?", oauthID).Scan(
+		&user.OauthID,
+		&user.Email,
+		&user.Picture,
+		&user.Name,
+		&user.GivenName,
+		&user.FamilyName); err != nil {
+		return &user, shared.ErrorRetrievingRecord(err)
 	}
-	defer rows.Close()
-	for rows.Next() {
-		err := rows.Scan(&user.OauthID, &user.Email, &user.Picture, &user.Name, &user.GivenName, &user.FamilyName)
-		if err != nil {
-			return &user, err
-		}
-	}
-	return &user, err
+
+	return &user, nil
 }
 
 
 //InsertUser creates a new user
-func InsertUser(user types.User) (*types.User, error) {
+func InsertUser(user types.User) (*types.User, *shared.AppError) {
 	stmt, err := db.DbCon.Prepare(`INSERT user SET oauthID = ?, 
                 email = ?, 
                 picture = ?, 
                 name = ?, 
                 givenName = ?, 
                 familyName = ?`)
-	if err != nil {
-		return &types.User{}, err
-	}
 	defer stmt.Close()
+	if err != nil {
+		return nil, shared.ErrorRetrievingRecord(err)
+	}
+
 
 	// Create user
-	_, err = stmt.Exec(user.OauthID, user.Email, user.Picture, user.Name, user.GivenName, user.FamilyName)
+	if _, err = stmt.Exec(
+		user.OauthID,
+		user.Email,
+		user.Picture,
+		user.Name,
+		user.GivenName,
+		user.FamilyName); err != nil {
+		return nil, shared.ErrorInsertingRecord(err)
+	}
 
 	// Create the users personal board
-	userBoard, err := InsertBoard(types.Board{Name: user.Name, BoardType: 0})
-	if err != nil {
-		return &types.User{}, err
+	userBoard, e := InsertBoard(types.Board{Name: user.Name, BoardType: 0})
+	if e != nil {
+		return nil, e
 	}
-	err = InsertBoardMember(types.BoardMember{UserFK: user.OauthID, BoardFK: userBoard.BoardID})
-	if err != nil {
-		return &types.User{}, err
+
+	if e := InsertBoardMember(types.BoardMember{UserFK: user.OauthID, BoardFK: userBoard.BoardID}); e != nil {
+		return nil, e
 	}
 
 	return SelectUser(user.OauthID)

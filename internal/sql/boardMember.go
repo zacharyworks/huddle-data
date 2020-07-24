@@ -1,6 +1,7 @@
 package sql
 
 import (
+	"../shared"
 	// SQL driver
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/zacharyworks/huddle-shared/data"
@@ -8,42 +9,32 @@ import (
 )
 
 // SelectBoardByID selects a board by its id
-func SelectBoardMemberByMemberID(id string) (board *types.Board, err error) {
-	rows, err := db.DbCon.Query("SELECT * FROM boardMember WHERE userFK = ?", id)
-	if err != nil {
-		return board, err
+func SelectBoardMemberByMemberID(id string) (board *types.Board, e *shared.AppError) {
+	board = &types.Board{}
+	if err := db.DbCon.QueryRow("SELECT * FROM boardMember WHERE userFK = ?", id).Scan(
+		&board.BoardID,
+		&board.Name); err != nil {
+		return board, shared.ErrorRetrievingRecord(err)
 	}
 
-	defer rows.Close()
-	for rows.Next() {
-		err := rows.Scan(
-			&board.BoardID,
-			&board.Name)
-		if err != nil {
-			return board, err
-		}
-	}
-	return board, err
+	return board, nil
 }
 
 // InsertBoardMember inserts a new member for a board
-func InsertBoardMember(boardMember types.BoardMember) error {
-	_, err := db.DbCon.Query(`INSERT boardMember 
+func InsertBoardMember(boardMember types.BoardMember) *shared.AppError {
+	if _, err := db.DbCon.Query(`INSERT boardMember 
 			SET boardFK = ?, 
 			    userFK = ?`,
 			boardMember.BoardFK,
-			boardMember.UserFK,
-	)
-	if err != nil {
-		return err
+			boardMember.UserFK); err != nil {
+		return shared.ErrorInsertingRecord(err)
 	}
-
 	return nil
 }
 
 // UpdateBoardMember updates a Board Member entry with new data
-func UpdateBoardMember(boardMember types.BoardMember) error {
-	_, err := db.DbCon.Query(`
+func UpdateBoardMember(boardMember types.BoardMember) *shared.AppError {
+	if _, err := db.DbCon.Query(`
 		UPDATE boardMember SET
 		boardFK = ?,
 		userFK = ?
@@ -51,16 +42,21 @@ func UpdateBoardMember(boardMember types.BoardMember) error {
 		boardMember.BoardFK,
 		boardMember.UserFK,
 		boardMember.BoardFK,
-		boardMember.UserFK)
-
-	return err
+		boardMember.UserFK); err != nil {
+		return shared.ErrorUpdatingRecord(err)
+	}
+	return nil
 }
 
 // DeleteBoardMember deletes a board member given IDs
-func DeleteBoardMember(boardMember types.BoardMember) error {
-	_, err := db.DbCon.Query("DELETE FROM boardMember WHERE boardFK = ? AND userFK = ?", boardMember.BoardFK, boardMember.UserFK)
-	if err != nil {
-		return err
+func DeleteBoardMember(boardMember types.BoardMember) *shared.AppError {
+	if _, err := db.DbCon.Query(`
+		DELETE FROM boardMember 
+		WHERE boardFK = ? 
+		AND userFK = ?`,
+		boardMember.BoardFK,
+		boardMember.UserFK); err != nil {
+		return shared.ErrorDeletingRecord(err)
 	}
 	return nil
 }
