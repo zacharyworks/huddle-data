@@ -2,6 +2,8 @@ package sql
 
 import (
 	"../shared"
+	"net/http"
+
 	// SQL driver
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/zacharyworks/huddle-shared/data"
@@ -18,7 +20,7 @@ func SelectUser(oauthID string) (*types.User, *shared.AppError) {
 		&user.Name,
 		&user.GivenName,
 		&user.FamilyName); err != nil {
-		return &user, shared.ErrorRetrievingRecord(err)
+		return &user, &shared.AppError{err, "User not found", http.StatusNotFound}
 	}
 
 	return &user, nil

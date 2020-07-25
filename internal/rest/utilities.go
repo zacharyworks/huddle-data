@@ -4,6 +4,9 @@ import (
 	"../shared"
 	"encoding/json"
 	"github.com/gorilla/mux"
+	"io"
+	"io/ioutil"
+	"log"
 	"net/http"
 	"strconv"
 )
@@ -20,7 +23,7 @@ func (fn Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	e := fn(w, r) // e is *shared.AppError, not os.Error.
 
 	if e != nil {
-		println(e.Error)
+		log.Printf("%s : %v", e.Message, e.Error)
 		http.Error(w, e.Message, e.Code)
 	}
 }
@@ -51,7 +54,20 @@ func respond (w http.ResponseWriter, data interface{}) *shared.AppError {
 func getVarAsInt(r *http.Request, v string) (int, *shared.AppError) {
 	param, err := strconv.Atoi(mux.Vars(r)[v])
 	if err != nil {
-		return 0, shared.ErrorProcessingParamater(err)
+		return 0, shared.ErrorProcessingParameter(err)
 	}
 	return param, nil
+}
+
+func readBodyIntoType(requestBody io.ReadCloser, structure interface{}) *shared.AppError{
+	body, err := ioutil.ReadAll(requestBody)
+	if err != nil {
+		return shared.ErrorProcessingBody(err)
+	}
+
+	if err = json.Unmarshal(body, &structure); err != nil {
+		return shared.ErrorProcessingJSON(err)
+	}
+
+	return nil
 }

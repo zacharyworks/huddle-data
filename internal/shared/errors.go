@@ -47,8 +47,8 @@ func ErrorProcessingJSON(e error) *AppError {
 	return newInternalError(e, "Unable to process JSON")
 }
 
-func ErrorProcessingParamater(e error) *AppError {
-	return newInternalError(e, "Unable to process paramater")
+func ErrorProcessingParameter(e error) *AppError {
+	return newInternalError(e, "Unable to process parameter")
 }
 
 func ErrorProcessingBody(e error) *AppError {

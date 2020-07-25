@@ -9,12 +9,8 @@ import (
 )
 
 func SelectUsersBoards(id string) (boards []types.Board, e *shared.AppError) {
-	var (
-		boardFK int
-		userFK string
-		)
 	rows, err := db.DbCon.Query(
-	`SELECT * FROM board 
+	`SELECT board.BoardID, board.Name, board.BoardType FROM board 
 			INNER JOIN boardMember ON board.boardID = boardMember.boardFK
 			WHERE boardMember.userFK = ?`, id)
 	if err != nil {
@@ -25,7 +21,7 @@ func SelectUsersBoards(id string) (boards []types.Board, e *shared.AppError) {
 
 	for rows.Next() {
 		var newBoard types.Board
-		err := rows.Scan(&newBoard.BoardID, &newBoard.Name, &newBoard.BoardType, &boardFK, &userFK)
+		err := rows.Scan(&newBoard.BoardID, &newBoard.Name, &newBoard.BoardType)
 		if err != nil {
 			return boards, shared.ErrorParsingRecord(err)
 		}

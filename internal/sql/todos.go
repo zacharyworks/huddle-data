@@ -58,7 +58,10 @@ func InsertTodo(todo types.Todo) (int, *shared.AppError) {
 	}
 
 	id, err := result.LastInsertId()
-	return int(id), shared.ErrorRetrievingRecord(err)
+	if err != nil {
+		return 0, shared.ErrorRetrievingRecord(err)
+	}
+	return int(id), nil
 }
 
 // UpdateTodo updates a to-do

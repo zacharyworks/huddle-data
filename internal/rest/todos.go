@@ -3,10 +3,8 @@ package rest
 import (
 	"../shared"
 	"../sql"
-	"encoding/json"
 	"github.com/gorilla/mux"
 	"github.com/zacharyworks/huddle-shared/data"
-	"io/ioutil"
 	"net/http"
 )
 
@@ -31,11 +29,7 @@ func GetBoardTodo(w http.ResponseWriter, r *http.Request) *shared.AppError  {
 		return e
 	}
 
-	if e = respond(w, todos); e != nil {
-		return e
-	}
-
-	return nil
+	return respond(w, todos)
 }
 
 
@@ -52,10 +46,7 @@ func GetTodo(w http.ResponseWriter, r *http.Request) *shared.AppError {
 		return e
 	}
 
-	if e = respond(w, todo); e != nil {
-		return e
-	}
-	return nil
+	return respond(w, todo)
 }
 
 // PutTodo puts a to-do
@@ -67,31 +58,23 @@ func PutTodo(w http.ResponseWriter, r *http.Request) *shared.AppError {
 
 	// Get map of to-do values from body from their keys
 	var todo types.Todo
-	body, err := ioutil.ReadAll(r.Body)
-	json.Unmarshal([]byte(body), &todo)
+	if e := readBodyIntoType(r.Body, &todo); e != nil {
+		return e
+	}
 
 	todo.TodoID = todoID
 
 	// Attempt update
-	if e = sql.UpdateTodo(todo); err != nil {
-		return e
-	}
-	return nil
+	return sql.UpdateTodo(todo)
 }
 
 // PostTodo posts a to-do
 func PostTodo(w http.ResponseWriter, r *http.Request) *shared.AppError {
-	body, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		shared.ErrorProcessingBody(err)
-	}
-
 	// Get map of to-do values from body from their keys
 	var todo types.Todo
-	if err := json.Unmarshal([]byte(body), &todo); err != nil {
-		return shared.ErrorProcessingJSON(err)
+	if e := readBodyIntoType(r.Body, &todo); e != nil {
+		return e
 	}
-
 	// Attempt to create to-do
 	id, e := sql.InsertTodo(todo)
 	if e != nil {
@@ -104,11 +87,7 @@ func PostTodo(w http.ResponseWriter, r *http.Request) *shared.AppError {
 		return e
 	}
 
-	// Form response
-	if e = respond(w, newTodo); e != nil {
-		return e
-	}
-	return nil
+	return respond(w, newTodo)
 }
 
 // DeleteTodo deletes a to-do
@@ -119,8 +98,5 @@ func DeleteTodo(w http.ResponseWriter, r *http.Request) *shared.AppError {
 	}
 
 	// Attempt delete
-	if e = sql.RemoveTodo(types.Todo{TodoID: todoID}); e != nil {
-		return e
-	}
-	return nil
+	return sql.RemoveTodo(types.Todo{TodoID: todoID})
 }

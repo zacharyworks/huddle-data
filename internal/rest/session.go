@@ -29,11 +29,7 @@ func GetSessionByID(w http.ResponseWriter, r *http.Request) *shared.AppError {
 		return e
 	}
 
-	// Convert to JSON
-	if e = respond(w, *session); e != nil {
-		return e
-	}
-	return nil
+	return respond(w, *session)
 }
 
 // GetSession fetches a session
@@ -46,19 +42,14 @@ func GetSessionByState(w http.ResponseWriter, r *http.Request) *shared.AppError 
 		log.Fatal(e)
 	}
 
-	// Convert to JSON
-	if e = respond(w, *session); e != nil {
-		return e
-	}
-
-	return nil
+	return respond(w, *session)
 }
 
 // PostSession creates a new session
 func PostSession(w http.ResponseWriter, r *http.Request) *shared.AppError {
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		shared.ErrorProcessingBody(err)
+		return shared.ErrorProcessingBody(err)
 	}
 
 	var session types.Session
@@ -75,26 +66,23 @@ func PostSession(w http.ResponseWriter, r *http.Request) *shared.AppError {
 		return e
 	}
 
-	// Convert to JSON
-	if e = respond(w, *newSession); e != nil {
-		return e
-	}
-	return nil
+	return respond(w, *newSession)
 }
 
 // PutSession puts a to-do
 func PutSession(w http.ResponseWriter, r *http.Request) *shared.AppError {
-	body, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		shared.ErrorProcessingBody(err)
-	}
+
+
 
 	var session types.Session
-	json.Unmarshal([]byte(body), &session)
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return shared.ErrorProcessingBody(err)
+	}
+	if err := json.Unmarshal([]byte(body), &session); err != nil {
+		return shared.ErrorProcessingJSON(err)
+	}
 
 	// Attempt update
-	if e := sql.UpdateSession(session); err != nil {
-		return e
-	}
-	return nil
+	return sql.UpdateSession(session)
 }

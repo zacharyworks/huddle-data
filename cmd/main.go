@@ -25,5 +25,5 @@ func main() {
 	rest.AddUserHandlers(router)
 	rest.AddSessionHandlers(router)
 	rest.AddBoardsHandlers(router)
-	log.Fatal(http.ListenAndServe(":8081", router))
+	log.Fatal(http.ListenAndServe(":8000", router))
 }
