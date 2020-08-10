@@ -1,10 +1,12 @@
 package main
 
 import (
-	"../internal/rest"
+	"encoding/json"
 	"fmt"
 	"github.com/gorilla/mux"
+	"github.com/zacharyworks/huddle-data/rest"
 	"github.com/zacharyworks/huddle-shared/db"
+	"io/ioutil"
 	"log"
 	"net/http"
 )
@@ -18,7 +20,7 @@ func addHandlers(router *mux.Router) {
 }
 
 func main() {
-	db.ConnectDB()
+	db.ConnectDB(readAuthCredentials())
 	router := mux.NewRouter().StrictSlash(true)
 	addHandlers(router)
 	rest.AddTodoHandlers(router)
@@ -26,4 +28,27 @@ func main() {
 	rest.AddSessionHandlers(router)
 	rest.AddBoardsHandlers(router)
 	log.Fatal(http.ListenAndServe(":8000", router))
+}
+
+func readAuthCredentials() (db.Credentials) {
+	file, err := ioutil.ReadFile("local-credentials.json")
+	if err != nil {
+		log.Fatal(err)
+	}
+	credentials := make(map[string]string)
+	err = json.Unmarshal([]byte(file), &credentials)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	dbCredentials := db.Credentials{
+		DbURL: credentials["DbURL"],
+		DbPort: credentials["DbPort"],
+		DbName: credentials["DbName"],
+		DbUser: credentials["DbUser"],
+		DbPass: credentials["DbPass"],
+
+	}
+
+	return dbCredentials
 }
