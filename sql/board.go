@@ -64,12 +64,11 @@ func InsertBoard(board types.Board) (*types.Board, *shared.AppError) {
 	} else {
 		return SelectBoardByID(int(id))
 	}
-
 }
 
 // UpdateBoard updates a session with new data
 func UpdateBoard(board types.Board) *shared.AppError {
-	_, err := db.DbCon.Query(`
+	_, err := db.DbCon.Exec(`
 		UPDATE board SET
 		boardID = ?,
 		name = ?,
@@ -79,7 +78,6 @@ func UpdateBoard(board types.Board) *shared.AppError {
 		board.Name,
 		board.BoardID,
 		board.BoardType)
-
 	if err != nil {
 		return shared.ErrorUpdatingRecord(err)
 	}
@@ -88,7 +86,7 @@ func UpdateBoard(board types.Board) *shared.AppError {
 
 // DeleteBoard deletes a session by ID
 func DeleteBoard(board types.Board) *shared.AppError {
-	_, err := db.DbCon.Query("DELETE FROM board WHERE boardID = ?", board.BoardID)
+	_, err := db.DbCon.Exec("DELETE FROM board WHERE boardID = ?", board.BoardID)
 	if err != nil {
 		return shared.ErrorDeletingRecord(err)
 	}

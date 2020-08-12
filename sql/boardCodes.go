@@ -9,7 +9,7 @@ import (
 )
 
 func InsertBoardJoinCode(boardJoinCode types.BoardJoinCode) *shared.AppError {
-	if _, err := db.DbCon.Query(`INSERT boardJoinCode
+	if _, err := db.DbCon.Exec(`INSERT boardJoinCode
 			SET boardFK = ?,
 			    code = ?`,
 			    boardJoinCode.BoardFK,

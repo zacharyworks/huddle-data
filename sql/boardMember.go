@@ -22,7 +22,7 @@ func SelectBoardMemberByMemberID(id string) (board *types.Board, e *shared.AppEr
 
 // InsertBoardMember inserts a new member for a board
 func InsertBoardMember(boardMember types.BoardMember) *shared.AppError {
-	if _, err := db.DbCon.Query(`INSERT boardMember 
+	if _, err := db.DbCon.Exec(`INSERT boardMember 
 			SET boardFK = ?, 
 			    userFK = ?`,
 			boardMember.BoardFK,
@@ -34,7 +34,7 @@ func InsertBoardMember(boardMember types.BoardMember) *shared.AppError {
 
 // UpdateBoardMember updates a Board Member entry with new data
 func UpdateBoardMember(boardMember types.BoardMember) *shared.AppError {
-	if _, err := db.DbCon.Query(`
+	if _, err := db.DbCon.Exec(`
 		UPDATE boardMember SET
 		boardFK = ?,
 		userFK = ?
@@ -50,7 +50,7 @@ func UpdateBoardMember(boardMember types.BoardMember) *shared.AppError {
 
 // DeleteBoardMember deletes a board member given IDs
 func DeleteBoardMember(boardMember types.BoardMember) *shared.AppError {
-	if _, err := db.DbCon.Query(`
+	if _, err := db.DbCon.Exec(`
 		DELETE FROM boardMember 
 		WHERE boardFK = ? 
 		AND userFK = ?`,
