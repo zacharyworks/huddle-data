@@ -47,7 +47,6 @@ func SelectTodo(id int) (*types.Todo, *shared.AppError) {
 func InsertTodo(todo types.Todo) (int, *shared.AppError) {
 	stmt, err := db.DbCon.Prepare("INSERT todo SET status = ?, value = ?, parentFK = ?, boardFK = ?")
 	defer stmt.Close()
-
 	if err != nil {
 		return 0, shared.ErrorInsertingRecord(err)
 	}
@@ -66,7 +65,7 @@ func InsertTodo(todo types.Todo) (int, *shared.AppError) {
 
 // UpdateTodo updates a to-do
 func UpdateTodo(todo types.Todo) *shared.AppError {
-	if _, err := db.DbCon.Query("UPDATE todo SET status = ?, value = ?, parentFK = ? WHERE todoID = ?",
+	if _, err := db.DbCon.Exec("UPDATE todo SET status = ?, value = ?, parentFK = ? WHERE todoID = ?",
 		todo.Status,
 		todo.Value,
 		todo.ParentFK,
@@ -79,8 +78,10 @@ func UpdateTodo(todo types.Todo) *shared.AppError {
 
 // RemoveTodo removes a to-do from the database
 func RemoveTodo(todo types.Todo) *shared.AppError {
-	if _, err := db.DbCon.Query("DELETE FROM todo WHERE todoID = ?", todo.TodoID); err != nil {
-		shared.ErrorDeletingRecord(err)
+	_, err := db.DbCon.Exec("DELETE FROM todo WHERE todoID = ?", todo.TodoID)
+	if err != nil {
+		return shared.ErrorProcessingParameter(err)
 	}
+
 	return nil
 }

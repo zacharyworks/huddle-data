@@ -31,7 +31,7 @@ func main() {
 }
 
 func readAuthCredentials() (db.Credentials) {
-	file, err := ioutil.ReadFile("local-credentials.json")
+	file, err := ioutil.ReadFile("credentials.json")
 	if err != nil {
 		log.Fatal(err)
 	}

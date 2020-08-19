@@ -46,10 +46,10 @@ func SelectSessionByState(state string) (*types.Session, *shared.AppError) {
 // InsertSession inserts a session of ID and State
 func InsertSession(session types.Session) *shared.AppError {
 	stmt, err := db.DbCon.Prepare("INSERT session SET sessionID = ?, state = ?")
+	defer stmt.Close()
 	if err != nil {
 		return shared.ErrorInsertingRecord(err)
 	}
-	defer stmt.Close()
 
 	if _, err = stmt.Exec(session.SessionID, session.State); err != nil {
 		return shared.ErrorInsertingRecord(err)
@@ -60,7 +60,7 @@ func InsertSession(session types.Session) *shared.AppError {
 
 // UpdateSession updates a session with new data
 func UpdateSession(session types.Session) *shared.AppError {
-	if _, err := db.DbCon.Query(`
+	if _, err := db.DbCon.Exec(`
 		UPDATE session SET
 		sessionID = ?,
 		state = ?,
@@ -78,7 +78,7 @@ func UpdateSession(session types.Session) *shared.AppError {
 
 // DeleteSession deletes a session by ID
 func DeleteSession(session types.Session) *shared.AppError {
-	_, err := db.DbCon.Query("DELETE FROM session WHERE sessionID = ?", session.SessionID)
+	_, err := db.DbCon.Exec("DELETE FROM session WHERE sessionID = ?", session.SessionID)
 	if err != nil {
 		return shared.ErrorDeletingRecord(err)
 	}
